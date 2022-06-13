@@ -6,7 +6,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import qualified Data.Map as Map
 
-import Formula
+import Exh.Formula
 
 allTests :: TestTree
 allTests = testGroup 
@@ -47,14 +47,14 @@ simpleAtom = testCase "atom" $ do
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
     let formula = 
-            Op orConnective
+            Op @Or
                 (MkF $ Atom "p") 
                 (MkF $ Atom "q") 
 
     evaluate_ simpleAssignment formula @?= Right True
 
     let formula = 
-            Op andConnective
+            Op @And
                 (MkF $ Atom "p") 
                 (MkF $ Atom "q") 
 
@@ -67,9 +67,9 @@ simpleConnective = testCase "simple connective" $ do
 mutipleConnective :: TestTree
 mutipleConnective = testCase "multiple connective" $ do
     let formula = 
-            Op orConnective
+            Op @Or
                 (MkF $ Atom "p") $
-                MkF $ Op andConnective
+                MkF $ Op @And
                     (MkF $ Atom "q") 
                     (MkF $ Atom "r") 
 
@@ -128,7 +128,7 @@ logicalSpace = testCase "logical space" $ do
 truthTable :: TestTree
 truthTable = testCase "truth table" $ do
     let formula = 
-            MkF $ Op andConnective
+            MkF $ Op @And
                 (MkF $ Atom "p") 
                 (MkF $ Atom "q") 
 

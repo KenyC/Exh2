@@ -5,7 +5,7 @@ module Test.Display where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Formula
+import Exh.Formula
 
 allTests :: TestTree
 allTests = testGroup 
@@ -25,7 +25,7 @@ simpleAtom = testCase "atom" $ do
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
     let formula = 
-            Op orConnective
+            Op @Or
                 (MkF $ Atom "p") 
                 (MkF $ Atom "q") 
 
@@ -40,7 +40,7 @@ negation = testCase "negation" $ do
 
     let formula = 
             Neg $  
-            MkF $ Op orConnective
+            MkF $ Op @Or
                 (MkF $ Atom "q") 
                 (MkF $ Atom "r") 
 
@@ -49,7 +49,7 @@ negation = testCase "negation" $ do
 
     let formula = 
             Neg $  
-            MkF $ Op andConnective
+            MkF $ Op @And
                 (MkF $ Atom "q") 
                 (MkF $ Atom "r") 
 
@@ -59,9 +59,9 @@ negation = testCase "negation" $ do
 multipleSameConnective :: TestTree
 multipleSameConnective = testCase "multiple connective of same nature" $ do
     let formula = 
-            Op orConnective
+            Op @Or
                 (MkF $ Atom "p") $
-                MkF $ Op orConnective
+                MkF $ Op @Or
                     (MkF $ Atom "q") 
                     (MkF $ Atom "r") 
 
@@ -72,18 +72,18 @@ multipleSameConnective = testCase "multiple connective of same nature" $ do
 multipleConnectiveDifferentPriority :: TestTree
 multipleConnectiveDifferentPriority = testCase "multiple connective with ≠ priority" $ do
     let formula = 
-            Op orConnective
+            Op @Or
                 (MkF $ Atom "p") $
-                MkF $ Op andConnective
+                MkF $ Op @And
                     (MkF $ Atom "q") 
                     (MkF $ Atom "r") 
 
     display formula @?= "p ∨ q ∧ r"
 
     let formula = 
-            Op andConnective
+            Op @And
                 (MkF $ Atom "p") $
-                MkF $ Op orConnective
+                MkF $ Op @Or
                     (MkF $ Atom "q") 
                     (MkF $ Atom "r") 
 

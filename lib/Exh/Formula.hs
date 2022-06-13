@@ -1,10 +1,17 @@
-module Formula where
+{-# LANGUAGE ConstraintKinds #-}
+module Exh.Formula where
 
 import Control.Monad.Writer.Strict
 import Data.String
+import Data.Default
+import Data.Maybe (catMaybes)
+import Data.List  (nub)
+import Data.Proxy
 import Data.Traversable (for)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Typeable
+import GHC.Exts (Constraint)
 
 ------------------- TYPES -----------------
 
@@ -21,13 +28,23 @@ class IsFormula f where
     evaluate_ :: Assignment Bool -> f -> Either EvalError Bool
 
 data Formula where
-    MkF :: (IsFormula f) => f -> Formula
+    MkF :: (IsFormula f, Eq f, Typeable f) => f -> Formula
 
+instance Eq Formula where
+    (==) (MkF f) (MkF g) = (cast f) == (Just g)
+-- data Test (k :: * -> Constraint) where
+--     MkT :: (IsFormula f, k f) => f -> Test k
+
+-- type DblConst a = (Show a, Read a)
+-- type Test1 = Test DblConst
+
+instance Show Formula where
+    show f = display f
 
 instance IsFormula Formula where
-    children  (MkF f) = children  f 
-    display_  (MkF f) = display_  f 
-    evaluate_ g (MkF f) = evaluate_ g f
+    children      (MkF f) = children  f 
+    display_      (MkF f) = display_  f 
+    evaluate_ g   (MkF f) = evaluate_ g f
 
 ------------------- UTILS -----------------
 
@@ -61,7 +78,7 @@ evalMulti container formula = for container $ \g -> evaluate g formula
 
 type Assignment t = Map AtomName t
 
--- | list is supposed to not contain twice the same name
+-- | No commitment to any behavior if same name appears twice in the list
 fullLogicalSpace :: [AtomName] -> [Assignment Bool]
 fullLogicalSpace names = 
     [Map.fromList $ zip names bools | bools <- truthTable] where
@@ -72,7 +89,8 @@ fullLogicalSpace names =
 ------------------- ATOM -----------------
 
 newtype AtomName = AtomName String deriving (Show, Eq, Ord, Read, IsString)
-data Atom = Atom AtomName 
+data Atom = Atom AtomName deriving (Eq)
+
 
 instance IsFormula Atom where
     children _ = []
@@ -96,50 +114,70 @@ data BinaryConnective = BinaryConnective {
     , fun      :: Bool -> Bool -> Bool
 }
 
-orConnective :: BinaryConnective
-orConnective = BinaryConnective {
-      symbol   = "∨"
-    , priority = 3
-    , fun      = (||)
-}
+data Or = Or
+instance IsConnective Or where
+    conn _ = BinaryConnective {
+          symbol   = "∨"
+        , priority = 3
+        , fun      = (||)
+    }
 
-andConnective :: BinaryConnective
-andConnective = BinaryConnective {
-      symbol   = "∧"
-    , priority = 2
-    , fun      = (&&)
-}
+data And = And
+instance IsConnective And where
+    conn _ = BinaryConnective {
+          symbol   = "∧"
+        , priority = 2
+        , fun      = (&&)
+    }
+
+-- | Associated type constant 
+class (Typeable op) => IsConnective op where
+    conn :: Proxy op -> BinaryConnective
 
 
+data Op op = Op Formula Formula
+deriving instance (IsConnective op) => Eq (Op op)
 
-data Op = Op BinaryConnective Formula Formula
+getConn :: forall op. (IsConnective op) => Op op -> BinaryConnective
+getConn _ = conn (Proxy :: Proxy op)
 
-instance IsFormula Op where
-    children (Op _ f g) = [f, g] 
+replaceOp :: (IsConnective op1, IsConnective op2) => Op op1 -> Op op2
+replaceOp (Op f g) = Op f g
 
-    display_ (Op BinaryConnective{..} _ _) ((priority1, f1):(priority2, f2):[]) = (,) priority $ execWriter $ do
-        tell $ parenthesizeIf (priority1 > priority) f1
-        tell " "
-        tell symbol
-        tell " "
-        tell $ parenthesizeIf (priority2 > priority) f2
+replaceOpAs :: (IsConnective op1, IsConnective op2) => f op2 -> Op op1 -> Op op2
+replaceOpAs = const replaceOp
+
+instance (IsConnective op) => IsFormula (Op op) where
+    children (Op f g) = [f, g] 
+
+    display_ op ((priority1, f1):(priority2, f2):[]) = 
+        let BinaryConnective {..} = getConn op in 
+            (,) priority $ execWriter $ do
+            tell $ parenthesizeIf (priority1 > priority) f1
+            tell " "
+            tell symbol
+            tell " "
+            tell $ parenthesizeIf (priority2 > priority) f2
     display_ _ _ = error "Wrong arity"
 
-    evaluate_ g (Op BinaryConnective{..} p q) = do
+    evaluate_ g op@(Op p q) = do
+        let BinaryConnective {..} = getConn op
         result1 <- evaluate_ g p
         result2 <- evaluate_ g q
         return $ result1 `fun` result2
+
+
 
 infixr 3 .&
 infixr 2 .|
 -- | syntactic sugar
 (.&), (.|) :: Formula -> Formula -> Formula
-(.&) f g = MkF $ Op andConnective f g
-(.|) f g = MkF $ Op orConnective  f g
+(.&) f g = MkF $ Op @And f g
+(.|) f g = MkF $ Op @Or  f g
 
 ------------------- NEGATION -----------------
 
-data Neg = Neg Formula
+data Neg = Neg Formula deriving (Eq)
 
 priorityNeg :: Int
 priorityNeg = 1
@@ -151,5 +189,7 @@ instance IsFormula Neg where
 
     evaluate_ g (Neg f) = not <$> (evaluate_ g f)
 
+
 neg :: Formula -> Formula
 neg = MkF . Neg
+

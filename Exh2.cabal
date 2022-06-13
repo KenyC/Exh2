@@ -17,12 +17,14 @@ build-type:          Simple
 
 library
   hs-source-dirs:    lib/
-  exposed-modules:   Formula
+  exposed-modules:   Exh.Formula
   build-depends:       base >=4.13 && <4.14
                      , mtl
                      , containers
+                     , data-default
   default-language:  Haskell2010
   default-extensions:
+    BangPatterns
     GADTs
     DataKinds
     StandaloneDeriving
@@ -31,6 +33,7 @@ library
     TypeApplications
     ScopedTypeVariables
     DeriveFunctor
+    ConstraintKinds
     PatternSynonyms
     LambdaCase
     Rank2Types
@@ -49,14 +52,37 @@ test-suite main-test
   type:               exitcode-stdio-1.0
   main-is:            Main.hs
   other-modules:      Test.Display
-                      Test.Evaluate
-  -- other-extensions:
+                      Test.Evaluate 
+ -- other-extensions:
   build-depends:      base
                     , Exh2
                     , containers
+                    , data-default
                     , mtl  
                     , tasty
                     , tasty-hunit
                     , tasty-quickcheck
   hs-source-dirs:      test
   default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    GADTs
+    DataKinds
+    StandaloneDeriving
+    RecordWildCards
+    TemplateHaskell
+    TypeApplications
+    ScopedTypeVariables
+    DeriveFunctor
+    ConstraintKinds
+    PatternSynonyms
+    LambdaCase
+    Rank2Types
+    MultiWayIf
+    TypeFamilies
+    FlexibleContexts  
+    FlexibleInstances  
+    MultiParamTypeClasses  
+    UnicodeSyntax
+    TypeOperators
+    GeneralizedNewtypeDeriving
