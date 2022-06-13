@@ -26,6 +26,7 @@ class IsFormula f where
     children  :: f -> [Formula]
     display_  :: f -> [(Int, String)] -> (Int, String)
     evaluate_ :: Assignment Bool -> f -> Either EvalError Bool
+    alts_     :: ScaleGen -> f -> [Formula]
 
 data Formula where
     MkF :: (IsFormula f, Eq f, Typeable f) => f -> Formula
@@ -45,6 +46,7 @@ instance IsFormula Formula where
     children      (MkF f) = children  f 
     display_      (MkF f) = display_  f 
     evaluate_ g   (MkF f) = evaluate_ g f
+    alts_     sg  (MkF f) = alts_ sg f
 
 ------------------- UTILS -----------------
 
@@ -99,6 +101,7 @@ instance IsFormula Atom where
                                 (Left $ NoValueFor name) 
                                 Right $
                                 Map.lookup name g 
+    alts_ _ f = [MkF f]
 
 
 -- | syntactic sugar
@@ -166,6 +169,24 @@ instance (IsConnective op) => IsFormula (Op op) where
         result2 <- evaluate_ g q
         return $ result1 `fun` result2
 
+    alts_ sg@ScaleGen{..} op@(Op p q) = let
+        !altsP = alts_ sg p -- forcing nubbing of the children at least
+        !altsQ = alts_ sg q -- forcing nubbing of the children at least
+        altsSameOp = 
+            [ Op @op altP altQ
+            | altP  <- alts_ sg p 
+            , altQ  <- alts_ sg q ]
+
+        scalarAlts = catMaybes
+            [ applyScale altSameRoot scale
+            | altSameRoot <- altsSameOp
+            , scale       <- _opScales  ]
+
+        subAlts
+            | _subst = altsP ++ altsQ
+            | otherwise = []
+
+        in nub $ (map MkF altsSameOp) ++ scalarAlts ++ subAlts
 
 
 infixr 3 .&
@@ -189,7 +210,42 @@ instance IsFormula Neg where
 
     evaluate_ g (Neg f) = not <$> (evaluate_ g f)
 
+    alts_ sg (Neg f) = MkF . Neg <$> alts_ sg f
 
 neg :: Formula -> Formula
 neg = MkF . Neg
 
+------------------- SCALE -----------------
+
+data ScaleGen = ScaleGen {
+    _opScales :: [OpScale]
+  , _subst :: Bool
+}
+
+instance Default ScaleGen where
+    def = ScaleGen {
+        _opScales = [Or <|> And]
+      , _subst = True
+    }
+
+data OpScale where
+    OpScale :: 
+        ( IsConnective op1
+        , IsConnective op2) 
+        => Proxy op1
+        -> Proxy op2
+        -> OpScale
+
+instance Eq OpScale where
+    (==) (OpScale op1 op2) (OpScale op1' op2') = 
+        (typeRep op1 == typeRep op1') && 
+        (typeRep op2 == typeRep op2')
+
+(<|>) :: forall op1 op2. (IsConnective op1, IsConnective op2) => op1 -> op2 -> OpScale
+(<|>) _ _ = OpScale (Proxy @op1) (Proxy @op2)
+
+
+applyScale :: (IsConnective op1) => Op op1 -> OpScale -> Maybe Formula
+applyScale f (OpScale op1' op2)  
+    | typeRep f == typeRep op1' = Just $ MkF $ replaceOpAs op2 f
+    | otherwise = Nothing

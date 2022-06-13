@@ -52,8 +52,10 @@ test-suite main-test
   type:               exitcode-stdio-1.0
   main-is:            Main.hs
   other-modules:      Test.Display
-                      Test.Evaluate 
- -- other-extensions:
+                      Test.Evaluate
+                      Test.Alts
+                      Utils
+  -- other-extensions:
   build-depends:      base
                     , Exh2
                     , containers
