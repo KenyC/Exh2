@@ -3,6 +3,8 @@ Exh2
 
 Rewrite of [Exh](https://github.com/KenyC/Exh/) in Haskell.
 
+(For another Haskell implementation, also check out [exhMonad](https://github.com/patrl/exhMonad) by P. Elliott)
+
 **Goals:**
 
   - *Faster than the original.* By failure of imagination, I haven't come up with a faster algorithm for exhaustification. I'm hoping that by employing a "faster" language than Python, and some micro-optimizations here and there, I hope it will naturally come out faster.

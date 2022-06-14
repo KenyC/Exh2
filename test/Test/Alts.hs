@@ -18,7 +18,7 @@ allTests = testGroup
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
-    let formula = Atom "xyz" 
+    let formula = Formula_ [] $ Atom "xyz" 
     alts_ def formula @?= [MkF formula]
 
 simpleConnective :: TestTree
@@ -29,17 +29,17 @@ simpleConnective = testCase "simple connective" $ do
     let opts = def { _subst = False }
 
     sameElems
-        (alts_ opts formula)  
+        (alts opts formula)  
         [p .| q, p .& q]
 
     let formula = p .& q 
     sameElems 
-        (alts_ opts formula) 
+        (alts opts formula) 
         [p .& q]
 
     sameElems
         [p .& q, p, q]
-        (alts_ def formula)  
+        (alts def formula)  
 
     -- let formula = p .& q 
     -- alts_ def formula @?= [p .& q, p, q]

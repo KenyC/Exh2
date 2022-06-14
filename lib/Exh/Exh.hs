@@ -17,22 +17,21 @@ instance Default ExhOptions where
     }
 
 data Exh = Exh {
-    prejacent :: !Formula 
-  , alts      :: ![Formula] 
+    allAlts   :: ![Formula] 
   , ieAlts    :: ![Formula]
   , opts      :: !ExhOptions
 } deriving (Eq)
 
 instance IsFormula Exh where
-    children Exh{..} = [prejacent] 
 
     display_ _ ((_, prejacent):[]) = (0, "Exh(" ++ prejacent ++ ")")
-    display_ _ _ = error "Number of children does not match"
+    display_ _ _ = error "Exh can only have one child"
 
-    evaluate_ g Exh{..} = do
-        v1 <- evaluate_ g prejacent
-        vs <- forM ieAlts $ evaluate_ g
+    evaluate_ g (Formula_ [prejacent] Exh{..}) = do
+        v1 <- evaluate g prejacent
+        vs <- forM ieAlts $ evaluate g
         return $! v1 && all not vs
+    evaluate_ _ _ = error "Exh can only have one child"
 
     alts_ _ f = [MkF f]
 
@@ -42,9 +41,10 @@ exh = exhWith def
 
 exhWith :: ExhOptions -> Formula -> Formula 
 exhWith opts@ExhOptions{..} prejacent = let
-    alts  = alts_ _scaleGen prejacent
-    ieAlts = ieExhaustify prejacent alts
-    in MkF $ Exh{..}
+    allAlts = alts _scaleGen prejacent
+    ieAlts  = ieExhaustify prejacent allAlts
+    exh = Exh{..}
+    in MkF $ Formula_ [prejacent] exh
 
 data PartialOrd 
     = StrictlyGreater

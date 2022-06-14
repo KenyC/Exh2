@@ -25,17 +25,24 @@ data EvalError
 ------------------- GENERIC FORMULA CONSTRUCT -----------------
 
 class IsFormula f where
-    children  :: f -> [Formula]
     display_  :: f -> [(Int, String)] -> (Int, String)
-    evaluate_ :: Assignment Bool -> f -> Either EvalError Bool
-    alts_     :: ScaleGen -> f -> [Formula]
+    evaluate_ :: Assignment Bool -> Formula_ f -> Either EvalError Bool
+    alts_     :: ScaleGen -> Formula_ f -> [Formula]
+
+data Formula_ a = Formula_ {
+    children :: [Formula]
+  , userData :: a
+} deriving (Eq)
 
 data Formula where
-    MkF :: (IsFormula f, Eq f, Typeable f) => f -> Formula
+    MkF :: (IsFormula f, Eq f, Typeable f) => Formula_ f -> Formula
 
 
-matching :: (IsFormula f, Typeable f) => Formula -> Maybe f
+matching :: (IsFormula f, Typeable f) => Formula -> Maybe (Formula_ f)
 matching (MkF f) = cast f 
+
+getData :: (IsFormula f, Typeable f) => Formula -> Maybe f
+getData =  matching >=> (Just . userData)
 
 instance Eq Formula where
     (==) (MkF f) (MkF g) = (cast f) == (Just g)
@@ -48,11 +55,16 @@ instance Eq Formula where
 instance Show Formula where
     show f = display f
 
-instance IsFormula Formula where
-    children      (MkF f) = children  f 
-    display_      (MkF f) = display_  f 
-    evaluate_ g   (MkF f) = evaluate_ g f
-    alts_     sg  (MkF f) = alts_ sg f
+foldFormula :: (forall f. (IsFormula f, Typeable f, Eq f) => f -> [a] -> a) -> Formula -> a
+foldFormula combine (MkF (Formula_ {..})) = combine userData $ map (foldFormula combine) children 
+
+-- instance IsFormula Formula where
+--     display_      (MkF f) = display_  f 
+--     evaluate_ g   (MkF f) = evaluate_ g f
+--     alts_     sg  (MkF f) = alts_ sg f
+
+alts :: ScaleGen -> Formula -> [Formula]
+alts sg (MkF f) = alts_ sg f
 
 ------------------- UTILS -----------------
 
@@ -68,16 +80,16 @@ parenthesizeIf False = id
 
 ------------------- DISPLAY -----------------
 
-displayAux :: (IsFormula f) => f -> (Int, String)
-displayAux f = display_ f (map displayAux $ children f)
+displayAux :: (IsFormula f) => Formula_ f -> (Int, String)
+displayAux f = display_ (userData f) [displayAux child | MkF child <- children f]
 
-display :: (IsFormula f) => f -> String
-display f = snd $ displayAux f
+display :: Formula -> String
+display (MkF f) = snd $ displayAux f
 
 ------------------- EVALUATE -----------------
 
 evaluate :: Assignment Bool -> Formula -> Either EvalError Bool
-evaluate = evaluate_
+evaluate g (MkF f) = evaluate_ g f
 
 evalMulti :: (Traversable f) => f (Assignment Bool) -> Formula -> Either EvalError (f Bool)
 evalMulti container formula = for container $ \g -> evaluate g formula
@@ -101,23 +113,25 @@ data Atom = Atom AtomName deriving (Eq, Show)
 
 
 instance IsFormula Atom where
-    children _ = []
     display_ (Atom (AtomName nameStr)) _ = (0, nameStr)
-    evaluate_ g (Atom name) = maybe 
-                                (Left $ NoValueFor name) 
-                                Right $
-                                Map.lookup name g 
+    evaluate_ g (Formula_ {..}) =
+        let Atom name = userData in 
+        maybe 
+            (Left $ NoValueFor name) 
+            Right $
+            Map.lookup name g 
     alts_ _ f = [MkF f]
 
 
 -- | syntactic sugar
 atom :: AtomName -> Formula
-atom = MkF. Atom 
+atom = MkF . (Formula_ []) . Atom 
 
 getAtoms :: Formula -> Set AtomName
-getAtoms f = case (matching @Atom f) of
-    Just (Atom name) -> Set.singleton name
-    _ -> Set.unions $ map getAtoms $! children f
+getAtoms = foldFormula combine where
+    combine x children = case cast x of
+        Just (Atom name) -> Set.singleton name
+        _ -> Set.unions $! children
 
 ------------------- BINARY CONNECTIVES -----------------
 
@@ -148,20 +162,19 @@ class (Typeable op) => IsConnective op where
     conn :: Proxy op -> BinaryConnective
 
 
-data Op op = Op Formula Formula
+data Op op = Op
 deriving instance (IsConnective op) => Eq (Op op)
 
 getConn :: forall op. (IsConnective op) => Op op -> BinaryConnective
 getConn _ = conn (Proxy :: Proxy op)
 
-replaceOp :: (IsConnective op1, IsConnective op2) => Op op1 -> Op op2
-replaceOp (Op f g) = Op f g
+replaceOp :: (IsConnective op1, IsConnective op2) => Formula_ (Op op1) -> Formula_ (Op op2)
+replaceOp (Formula_ children _) = Formula_ children Op
 
-replaceOpAs :: (IsConnective op1, IsConnective op2) => f op2 -> Op op1 -> Op op2
+replaceOpAs :: (IsConnective op1, IsConnective op2) => f op2 -> Formula_ (Op op1) -> Formula_ (Op op2)
 replaceOpAs = const replaceOp
 
 instance (IsConnective op) => IsFormula (Op op) where
-    children (Op f g) = [f, g] 
 
     display_ op ((priority1, f1):(priority2, f2):[]) = 
         let BinaryConnective {..} = getConn op in 
@@ -173,19 +186,21 @@ instance (IsConnective op) => IsFormula (Op op) where
             tell $ parenthesizeIf (priority2 > priority) f2
     display_ _ _ = error "Wrong arity"
 
-    evaluate_ g op@(Op p q) = do
-        let BinaryConnective {..} = getConn op
-        result1 <- evaluate_ g p
-        result2 <- evaluate_ g q
+    evaluate_ g (Formula_ {..}) = 
+        let p:q:[] = children in do
+        let BinaryConnective {..} = getConn userData
+        result1 <- evaluate g p
+        result2 <- evaluate g q
         return $ result1 `fun` result2
 
-    alts_ sg@ScaleGen{..} op@(Op p q) = let
-        !altsP = alts_ sg p -- forcing nubbing of the children at least
-        !altsQ = alts_ sg q -- forcing nubbing of the children at least
+    alts_ sg@ScaleGen{..} Formula_{..} = let
+        p:q:[] = children
+        !altsP = alts sg p -- forcing nubbing of the children at least
+        !altsQ = alts sg q -- forcing nubbing of the children at least
         altsSameOp = 
-            [ Op @op altP altQ
-            | altP  <- alts_ sg p 
-            , altQ  <- alts_ sg q ]
+            [ Formula_ [altP, altQ] (Op @op)
+            | altP  <- alts sg p 
+            , altQ  <- alts sg q ]
 
         scalarAlts = catMaybes
             [ applyScale altSameRoot scale
@@ -203,27 +218,29 @@ infixr 3 .&
 infixr 2 .|
 -- | syntactic sugar
 (.&), (.|) :: Formula -> Formula -> Formula
-(.&) f g = MkF $ Op @And f g
-(.|) f g = MkF $ Op @Or  f g
+(.&) f g = MkF $ Formula_ [f, g] (Op @And) 
+(.|) f g = MkF $ Formula_ [f, g] (Op @Or)  
 
 ------------------- NEGATION -----------------
 
-data Neg = Neg Formula deriving (Eq)
+data Neg = Neg deriving (Eq)
 
 priorityNeg :: Int
 priorityNeg = 1
 
 instance IsFormula Neg where
-    children (Neg f) = [f]
 
     display_ _ ((priority, f):[]) = (priorityNeg,  '¬':parenthesizeIf (priority > priorityNeg) f)
+    display_ _ _ = error "Negation can only have one child."
 
-    evaluate_ g (Neg f) = not <$> (evaluate_ g f)
+    evaluate_ g (Formula_ [f] _) = not <$> evaluate g f
+    evaluate_ _ _ = error "Negation can only have one child."
 
-    alts_ sg (Neg f) = MkF . Neg <$> alts_ sg f
+    alts_ sg (Formula_ [child] _) = neg <$> alts sg child
+    alts_ _ _ = error "Negation can only have one child."
 
 neg :: Formula -> Formula
-neg = MkF . Neg
+neg f = MkF $ Formula_ [f] Neg 
 
 ------------------- SCALE -----------------
 
@@ -255,7 +272,7 @@ instance Eq OpScale where
 (<|>) _ _ = OpScale (Proxy @op1) (Proxy @op2)
 
 
-applyScale :: (IsConnective op1) => Op op1 -> OpScale -> Maybe Formula
+applyScale :: (IsConnective op1) => Formula_ (Op op1) -> OpScale -> Maybe Formula
 applyScale f (OpScale op1' op2)  
-    | typeRep f == typeRep op1' = Just $ MkF $ replaceOpAs op2 f
+    | typeRep (userData f) == typeRep op1' = Just $ MkF $ replaceOpAs op2 f
     | otherwise = Nothing

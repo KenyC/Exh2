@@ -18,9 +18,9 @@ allTests = testGroup
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
-    let Just formula = matching @Exh $ exh $ atom "p" 
-    alts formula   @?= [atom "p"]
-    ieAlts formula @?= []
+    let Just formula = getData @Exh $ exh $ atom "p" 
+    allAlts formula  @?= [atom "p"]
+    ieAlts  formula  @?= []
 
 
 simpleConnective :: TestTree

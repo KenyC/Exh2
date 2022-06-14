@@ -37,53 +37,49 @@ getAtomsTest = testCase "function 'getAtoms'" $ do
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
-    let formula = Atom "p" 
+    let formula = Formula_ [] $ Atom "p" 
     evaluate_ simpleAssignment formula @?= Right True
 
-    let formula = Atom "q" 
+    let formula = Formula_ [] $ Atom "q" 
     evaluate_ simpleAssignment formula @?= Right False
 
-    let formula = Atom "r" 
+    let formula = Formula_ [] $ Atom "r" 
     evaluate_ simpleAssignment formula @?= Left (NoValueFor "r")
 
     let formula = atom "p" 
-    evaluate_ simpleAssignment formula @?= Right True
+    evaluate simpleAssignment formula @?= Right True
 
     let formula = atom "q" 
-    evaluate_ simpleAssignment formula @?= Right False
+    evaluate simpleAssignment formula @?= Right False
 
     let formula = atom "r" 
-    evaluate_ simpleAssignment formula @?= Left (NoValueFor "r")
+    evaluate simpleAssignment formula @?= Left (NoValueFor "r")
 
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
     let formula = 
-            Op @Or
-                (MkF $ Atom "p") 
-                (MkF $ Atom "q") 
+            Formula_ 
+                [ MkF $ Formula_ [] $ Atom "p"  
+                , MkF $ Formula_ [] $ Atom "q" ] 
+                (Op @Or)
 
     evaluate_ simpleAssignment formula @?= Right True
 
     let formula = 
-            Op @And
-                (MkF $ Atom "p") 
-                (MkF $ Atom "q") 
+            Formula_ 
+                [ MkF $ Formula_ [] $ Atom "p" 
+                , MkF $ Formula_ [] $ Atom "q" ]
+                (Op @And)
 
     evaluate_ simpleAssignment formula @?= Right False
 
     let formula = (atom "p") .& (atom "q")
-    evaluate_ simpleAssignment formula @?= Right False
+    evaluate simpleAssignment formula @?= Right False
 
 
 mutipleConnective :: TestTree
 mutipleConnective = testCase "multiple connective" $ do
-    let formula = 
-            Op @Or
-                (MkF $ Atom "p") $
-                MkF $ Op @And
-                    (MkF $ Atom "q") 
-                    (MkF $ Atom "r") 
-
+    let formula = atom "p" .| (atom "q" .& atom "r")
     let assignment = 
           Map.fromList
             [ ("p", True)
@@ -91,7 +87,7 @@ mutipleConnective = testCase "multiple connective" $ do
             , ("r", False) ]
 
 
-    evaluate_ assignment formula @?= Right True
+    evaluate assignment formula @?= Right True
 
     let assignment = 
           Map.fromList
@@ -99,7 +95,7 @@ mutipleConnective = testCase "multiple connective" $ do
             , ("q", True) 
             , ("r", False) ]
 
-    evaluate_ assignment formula @?= Right False
+    evaluate assignment formula @?= Right False
 
     -- check that there is no short circuit evaluation
     let assignment = 
@@ -107,7 +103,7 @@ mutipleConnective = testCase "multiple connective" $ do
             [ ("p", True)
             , ("q", True) ]
 
-    evaluate_ assignment formula @?= Left (NoValueFor "r")
+    evaluate assignment formula @?= Left (NoValueFor "r")
 
     let p:q:r:[] = map atom ["p", "q", "r"]
         formula = p .| q .& r
@@ -139,9 +135,10 @@ logicalSpace = testCase "logical space" $ do
 truthTable :: TestTree
 truthTable = testCase "truth table" $ do
     let formula = 
-            MkF $ Op @And
-                (MkF $ Atom "p") 
-                (MkF $ Atom "q") 
+            MkF $ Formula_  
+                [ MkF $ Formula_ [] $ Atom "p" 
+                , MkF $ Formula_ [] $ Atom "q" ]
+                (Op @And)
 
 
     evalMulti (fullLogicalSpace ["p", "q"]) formula @?= Right [False, False, False, True]
