@@ -5,6 +5,7 @@ module Test.Evaluate where
 import Test.Tasty
 import Test.Tasty.HUnit
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Exh.Formula
 
@@ -12,10 +13,12 @@ allTests :: TestTree
 allTests = testGroup 
                 "evaluate"
                 [ simpleAtom 
+                , getAtomsTest 
                 , logicalSpace 
                 , truthTable 
                 , simpleConnective 
                 , mutipleConnective ]
+
 
 simpleAssignment :: Assignment Bool
 simpleAssignment = 
@@ -23,6 +26,14 @@ simpleAssignment =
         [ ("p", True)
         , ("q", False) ]
 
+getAtomsTest :: TestTree
+getAtomsTest = testCase "function 'getAtoms'" $ do
+    let p:q:r:[] = map atom ["p", "q", "r"]
+
+    getAtoms p             @?= Set.fromList ["p"]  
+    getAtoms (p .& neg q)  @?= Set.fromList ["p", "q"]  
+    getAtoms (p .& q .| q) @?= Set.fromList ["p", "q"]  
+    getAtoms (r .& q .| p) @?= Set.fromList ["p", "q", "r"]  
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do

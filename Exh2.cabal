@@ -18,11 +18,17 @@ build-type:          Simple
 library
   hs-source-dirs:    lib/
   exposed-modules:   Exh.Formula
+                     Exh.Exh
   build-depends:       base >=4.13 && <4.14
                      , mtl
                      , containers
                      , data-default
   default-language:  Haskell2010
+  ghc-options:   -Wunused-imports
+                 -Wincomplete-patterns 
+                 -Wmissing-fields 
+                 -Wunused-matches
+                 -fdefer-typed-holes
   default-extensions:
     BangPatterns
     GADTs
@@ -54,6 +60,7 @@ test-suite main-test
   other-modules:      Test.Display
                       Test.Evaluate
                       Test.Alts
+                      Test.Exh
                       Utils
   -- other-extensions:
   build-depends:      base

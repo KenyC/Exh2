@@ -3,6 +3,8 @@ module Exh.Formula where
 
 import Control.Monad.Writer.Strict
 import Data.String
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Default
 import Data.Maybe (catMaybes)
 import Data.List  (nub)
@@ -30,6 +32,10 @@ class IsFormula f where
 
 data Formula where
     MkF :: (IsFormula f, Eq f, Typeable f) => f -> Formula
+
+
+matching :: (IsFormula f, Typeable f) => Formula -> Maybe f
+matching (MkF f) = cast f 
 
 instance Eq Formula where
     (==) (MkF f) (MkF g) = (cast f) == (Just g)
@@ -91,7 +97,7 @@ fullLogicalSpace names =
 ------------------- ATOM -----------------
 
 newtype AtomName = AtomName String deriving (Show, Eq, Ord, Read, IsString)
-data Atom = Atom AtomName deriving (Eq)
+data Atom = Atom AtomName deriving (Eq, Show)
 
 
 instance IsFormula Atom where
@@ -108,6 +114,10 @@ instance IsFormula Atom where
 atom :: AtomName -> Formula
 atom = MkF. Atom 
 
+getAtoms :: Formula -> Set AtomName
+getAtoms f = case (matching @Atom f) of
+    Just (Atom name) -> Set.singleton name
+    _ -> Set.unions $ map getAtoms $! children f
 
 ------------------- BINARY CONNECTIVES -----------------
 
@@ -220,7 +230,7 @@ neg = MkF . Neg
 data ScaleGen = ScaleGen {
     _opScales :: [OpScale]
   , _subst :: Bool
-}
+} deriving (Eq)
 
 instance Default ScaleGen where
     def = ScaleGen {
