@@ -7,7 +7,10 @@ import Test.Tasty.HUnit
 
 import Utils
 
-import Exh.Formula
+import Exh.Formula.Internal
+import Exh.Formula.Atom
+import Exh.Formula.Op
+import Exh.Exh
 
 allTests :: TestTree
 allTests = testGroup 
@@ -24,25 +27,25 @@ simpleAtom = testCase "atom" $ do
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
     let p:q:[] = map atom ["p", "q"]
-    let formula = p .| q 
+    let formula = p |. q 
 
     let opts = def { _subst = False }
 
     sameElems
         (alts opts formula)  
-        [p .| q, p .& q]
+        [p |. q, p &. q]
 
-    let formula = p .& q 
+    let formula = p &. q 
     sameElems 
         (alts opts formula) 
-        [p .& q]
+        [p &. q]
 
     sameElems
-        [p .& q, p, q]
+        [p &. q, p, q]
         (alts def formula)  
 
-    -- let formula = p .& q 
-    -- alts_ def formula @?= [p .& q, p, q]
+    -- let formula = p &. q 
+    -- alts_ def formula @?= [p &. q, p, q]
 
 
 -- negation :: TestTree

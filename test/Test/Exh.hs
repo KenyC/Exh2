@@ -6,7 +6,9 @@ import Test.Tasty.HUnit
 
 import Utils
 
-import Exh.Formula
+import Exh.Formula.Internal
+import Exh.Formula.Atom
+import Exh.Formula.Op
 import Exh.Exh
 
 allTests :: TestTree
@@ -29,13 +31,13 @@ simpleConnective = testCase "connective" $ do
     let q = atom "q"
 
     sameElems
-        (ieExhaustify (p .& q) [p, q, p .| q])
+        (ieExhaustify (p &. q) [p, q, p |. q])
         []
 
     sameElems
-        (ieExhaustify (p .| q) [p, q, p .& q])
-        [p .& q]
+        (ieExhaustify (p |. q) [p, q, p &. q])
+        [p &. q]
 
     sameElems
-        (ieExhaustify (p .| q) [p, q])
+        (ieExhaustify (p |. q) [p, q])
         []

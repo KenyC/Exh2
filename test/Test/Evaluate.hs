@@ -7,7 +7,10 @@ import Test.Tasty.HUnit
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Exh.Formula
+import Exh.Formula.Atom
+import Exh.Formula.Internal
+import Exh.Formula.Neg
+import Exh.Formula.Op
 
 allTests :: TestTree
 allTests = testGroup 
@@ -31,9 +34,9 @@ getAtomsTest = testCase "function 'getAtoms'" $ do
     let p:q:r:[] = map atom ["p", "q", "r"]
 
     getAtoms p             @?= Set.fromList ["p"]  
-    getAtoms (p .& neg q)  @?= Set.fromList ["p", "q"]  
-    getAtoms (p .& q .| q) @?= Set.fromList ["p", "q"]  
-    getAtoms (r .& q .| p) @?= Set.fromList ["p", "q", "r"]  
+    getAtoms (p &. neg q)  @?= Set.fromList ["p", "q"]  
+    getAtoms (p &. q |. q) @?= Set.fromList ["p", "q"]  
+    getAtoms (r &. q |. p) @?= Set.fromList ["p", "q", "r"]  
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
@@ -73,13 +76,13 @@ simpleConnective = testCase "simple connective" $ do
 
     evaluate_ simpleAssignment formula @?= Right False
 
-    let formula = (atom "p") .& (atom "q")
+    let formula = (atom "p") &. (atom "q")
     evaluate simpleAssignment formula @?= Right False
 
 
 mutipleConnective :: TestTree
 mutipleConnective = testCase "multiple connective" $ do
-    let formula = atom "p" .| (atom "q" .& atom "r")
+    let formula = atom "p" |. (atom "q" &. atom "r")
     let assignment = 
           Map.fromList
             [ ("p", True)
@@ -106,7 +109,7 @@ mutipleConnective = testCase "multiple connective" $ do
     evaluate assignment formula @?= Left (NoValueFor "r")
 
     let p:q:r:[] = map atom ["p", "q", "r"]
-        formula = p .| q .& r
+        formula = p |. q &. r
         expected =
             [ False, False, False, True
             , True, True, True, True ]

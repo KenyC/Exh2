@@ -18,6 +18,11 @@ build-type:          Simple
 library
   hs-source-dirs:    lib/
   exposed-modules:   Exh.Formula
+                     Exh.Formula.Atom
+                     Exh.Formula.Internal
+                     Exh.Formula.Neg
+                     Exh.Formula.Op
+                     Exh.Formula.Utils
                      Exh.Exh
   build-depends:       base >=4.13 && <4.14
                      , mtl

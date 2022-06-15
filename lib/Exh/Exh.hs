@@ -2,14 +2,23 @@ module Exh.Exh where
 
 import Data.Default
 import Data.List (foldl')
-import Exh.Formula
 import Data.Traversable
 import qualified Data.Set as Set
 import Debug.Trace
 
+import Exh.Formula.Internal
+import Exh.Formula.Atom
+import Exh.Formula.Op
+
 data ExhOptions = ExhOptions {
     _scaleGen :: ScaleGen    
 } deriving (Eq)
+
+instance Default ScaleGen where
+    def = ScaleGen {
+        _opScales = [Or <|> And]
+      , _subst    = True
+    }
 
 instance Default ExhOptions where
     def = ExhOptions {

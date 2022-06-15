@@ -6,6 +6,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Exh.Formula
+import Exh.Formula.Atom
 
 allTests :: TestTree
 allTests = testGroup 
@@ -24,7 +25,7 @@ simpleAtom = testCase "atom" $ do
 
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
-    let formula = (atom "p") .| (atom "q")
+    let formula = (atom "p") |. (atom "q")
     display formula @?= "p ∨ q"
 
 negation :: TestTree
@@ -33,27 +34,27 @@ negation = testCase "negation" $ do
     display formula @?= "¬p"
 
 
-    let formula = neg $ atom "q" .| atom "r" 
+    let formula = neg $ atom "q" |. atom "r" 
     display formula @?= "¬(q ∨ r)"
 
 
 
-    let formula = neg $ (atom "q" .& atom "r")
+    let formula = neg $ (atom "q" &. atom "r")
     display formula @?= "¬(q ∧ r)"
 
 multipleSameConnective :: TestTree
 multipleSameConnective = testCase "multiple connective of same nature" $ do
-    let formula = atom "p" .| (atom "q" .| atom "r")
+    let formula = atom "p" |. (atom "q" |. atom "r")
     display formula @?= "p ∨ q ∨ r"
 
 
 
 multipleConnectiveDifferentPriority :: TestTree
 multipleConnectiveDifferentPriority = testCase "multiple connective with ≠ priority" $ do
-    let formula = atom "p" .| (atom "q" .& atom "r")
+    let formula = atom "p" |. (atom "q" &. atom "r")
     display formula @?= "p ∨ q ∧ r"
 
-    let formula = atom "p" .& (atom "q" .| atom "r")
+    let formula = atom "p" &. (atom "q" |. atom "r")
     display formula @?= "p ∧ (q ∨ r)"
 
 
