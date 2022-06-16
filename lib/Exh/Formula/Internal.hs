@@ -12,6 +12,7 @@ module Exh.Formula.Internal(
 
     -- high-level stuff
     , alts
+    , getAtoms
     , display
     , evaluate
     , evalMulti
@@ -30,6 +31,8 @@ import Data.Proxy
 import Data.Traversable (for)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Typeable
 
 ------------------- TYPES -----------------
@@ -45,6 +48,11 @@ class (Typeable f, Eq f) => IsFormula f where
     display_  :: f -> [(Int, String)] -> (Int, String)
     evaluate_ :: Assignment Bool -> Formula_ f -> Either EvalError Bool
     alts_     :: ScaleGen -> Formula_ f -> [Formula]
+
+    {-# MINIMAL display_, evaluate_, alts_ #-}
+
+    getAtoms_ :: Formula_ f -> Set AtomName
+    getAtoms_ Formula_{..} = Set.unions [getAtoms_ f | MkF f <- children] 
 
 data Formula_ a = Formula_ {
     children :: [Formula]
@@ -83,6 +91,8 @@ foldFormula combine (MkF (Formula_ {..})) = combine userData $ map (foldFormula 
 alts :: ScaleGen -> Formula -> [Formula]
 alts sg (MkF f) = alts_ sg f
 
+getAtoms :: Formula -> Set AtomName
+getAtoms (MkF f) = getAtoms_ f
 
 ------------------- DISPLAY -----------------
 

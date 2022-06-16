@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.Evaluate where
 
-
+import Data.Default
 import Test.Tasty
 import Test.Tasty.HUnit
 import qualified Data.Map as Map
@@ -11,6 +11,7 @@ import Exh.Formula.Atom
 import Exh.Formula.Internal
 import Exh.Formula.Neg
 import Exh.Formula.Op
+import Exh.Exh
 import Exh.Semantics
 
 allTests :: TestTree
@@ -39,6 +40,8 @@ getAtomsTest = testCase "function 'getAtoms'" $ do
     getAtoms (p &. q |. q) @?= Set.fromList ["p", "q"]  
     getAtoms (r &. q |. p) @?= Set.fromList ["p", "q", "r"]  
 
+    let opts = def {_stipulatedAlts = Just [q]}
+    getAtoms (exhWith opts p) @?= Set.fromList ["p", "q"]
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
     let formula = Formula_ [] $ Atom "p" 

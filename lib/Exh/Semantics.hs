@@ -12,6 +12,7 @@ module Exh.Semantics(
   , mkTruthTableSafe
   , TruthTable
   , displayTruthTable
+  , (<=>)
 ) where
 
 import Control.Monad.Writer.Strict
@@ -57,9 +58,10 @@ compatibleOn u f1 f2 = do
 toAbsolute :: ([Assignment Bool] -> Formula -> Formula -> Either EvalError Bool) -> Formula -> Formula -> Either EvalError Bool
 toAbsolute fun f1 f2 = fun u f1 f2 where u = fullLogicalSpace (Set.toList $ (getAtoms f1) `Set.union` (getAtoms f2)) 
 
-equivalent :: Formula -> Formula -> Either EvalError Bool
+infix 1 <=> 
+equivalent, (<=>) :: Formula -> Formula -> Either EvalError Bool
 equivalent = toAbsolute equivalentOn
-
+(<=>) = equivalent
 
 entails :: Formula -> Formula -> Either EvalError Bool
 entails = toAbsolute entailsOn
@@ -80,6 +82,10 @@ data TruthTable = TruthTable {
   , assignments  :: [Assignment Bool]
   , outcomes     :: [[Bool]] -- ^ `outcomes !! 34` gives you the result of evaluating the formulas with `assignments !! 34`
 } deriving (Eq)
+
+instance Show TruthTable where
+    show tt = displayTruthTable tt 
+
 
 mkTruthTableSafe :: [Formula] -> Either EvalError TruthTable
 mkTruthTableSafe fs = do

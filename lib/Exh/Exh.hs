@@ -1,4 +1,10 @@
-module Exh.Exh where
+module Exh.Exh(
+      ExhOptions(..)
+    , Exh(..)
+    , exh
+    , exhWith
+    , ieExhaustify
+) where
 
 import Data.Default
 import Data.List (foldl')
@@ -12,7 +18,8 @@ import Exh.Formula.Op
 import Exh.Semantics
 
 data ExhOptions = ExhOptions {
-    _scaleGen :: ScaleGen    
+    _scaleGen       :: ScaleGen    
+  , _stipulatedAlts :: Maybe [Formula]
 } deriving (Eq)
 
 instance Default ScaleGen where
@@ -24,6 +31,7 @@ instance Default ScaleGen where
 instance Default ExhOptions where
     def = ExhOptions {
         _scaleGen = def
+      , _stipulatedAlts = Nothing
     }
 
 data Exh = Exh {
@@ -43,15 +51,25 @@ instance IsFormula Exh where
         return $! v1 && all not vs
     evaluate_ _ _ = error "Exh can only have one child"
 
-    alts_ _ f = [MkF f]
+    -- Potentially an error here: what guarantees that alts were constructed the same way as we're about to compute alts now
+    alts_ _ f = 
+        let Exh{..} = userData f in
+        [ exhWith (opts {_stipulatedAlts = Just allAlts}) alt
+        | alt <- allAlts ]
 
+
+    getAtoms_ f = Set.unions $ map getAtoms $ prejacent:altsE
+                  where altsE       = allAlts $ userData f
+                        prejacent:_ = children f
 
 
 exh = exhWith def
 
 exhWith :: ExhOptions -> Formula -> Formula 
 exhWith opts@ExhOptions{..} prejacent = let
-    allAlts = alts _scaleGen prejacent
+    allAlts = case _stipulatedAlts of
+        Just as -> as
+        Nothing -> alts _scaleGen prejacent
     ieAlts  = ieExhaustify prejacent allAlts
     exh = Exh{..}
     in MkF $ Formula_ [prejacent] exh
@@ -76,7 +94,7 @@ instance Monoid PartialOrd where
 -- | From a prejacent and a set of alternatives, returns the IE alternatives
 ieExhaustify :: Formula -> [Formula] -> [Formula]
 ieExhaustify prejacent alts = let
-    atoms = getAtoms prejacent
+    atoms = Set.unions $ map getAtoms $ prejacent:alts
     universe = fullLogicalSpace $ Set.toList atoms
     -- can't fail the way b/c we tailor-made the universe for this formula ; 
     -- but the compiler does not know that
@@ -85,7 +103,7 @@ ieExhaustify prejacent alts = let
 
     -- here there is potential for failure, as alternatives may be customs-specified
     -- maybe make the universe after alternatives have been computed?
-    Right !evaluatedVals = traceShowId $
+    Right !evaluatedVals =  
         for restrictedUniverse $ \assignment -> 
         for alts               $ \alt ->
         not <$> evaluate assignment alt

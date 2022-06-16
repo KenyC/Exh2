@@ -1,4 +1,7 @@
-module Exh.Formula.Atom where
+module Exh.Formula.Atom(
+    Atom(..)
+  , atom
+) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -22,13 +25,10 @@ instance IsFormula Atom where
             Map.lookup name g 
     alts_ _ f = [MkF f]
 
+    getAtoms_ f = Set.singleton $ name
+                  where Atom name = userData f
 
 -- | syntactic sugar
 atom :: AtomName -> Formula
 atom = MkF . (Formula_ []) . Atom 
 
-getAtoms :: Formula -> Set AtomName
-getAtoms = foldFormula combine where
-    combine x children = case cast x of
-        Just (Atom name) -> Set.singleton name
-        _ -> Set.unions $! children
