@@ -14,7 +14,7 @@ import Exh.Exh
 
 allTests :: TestTree
 allTests = testGroup 
-                "display"
+                "alts"
                 [ simpleAtom  
                 , simpleConnective  ]
 

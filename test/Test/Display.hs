@@ -7,6 +7,7 @@ import Test.Tasty.HUnit
 
 import Exh.Formula
 import Exh.Formula.Atom
+import Exh.Semantics
 
 allTests :: TestTree
 allTests = testGroup 
@@ -15,7 +16,8 @@ allTests = testGroup
                 , simpleConnective 
                 , multipleSameConnective 
                 , multipleConnectiveDifferentPriority 
-                , negation  ]
+                , negation  
+                , truthTable  ]
 
 
 simpleAtom :: TestTree
@@ -58,3 +60,17 @@ multipleConnectiveDifferentPriority = testCase "multiple connective with ≠ pri
     display formula @?= "p ∧ (q ∨ r)"
 
 
+truthTable :: TestTree
+truthTable = testCase "truth table" $ do
+    let formula = atom "p" |. atom "q"
+
+    let truthTable = mkTruthTable [formula]
+    let expected = mconcat
+            [ "| p | q |p ∨ q|\n"
+            , "---------------\n"
+            , "| 0 | 0 |  0  |\n"
+            , "| 0 | 1 |  1  |\n"
+            , "| 1 | 0 |  1  |\n"
+            , "| 1 | 1 |  1  |\n"
+            ]
+    displayTruthTable truthTable @?= expected

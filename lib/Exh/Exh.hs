@@ -9,6 +9,7 @@ import Debug.Trace
 import Exh.Formula.Internal
 import Exh.Formula.Atom
 import Exh.Formula.Op
+import Exh.Semantics
 
 data ExhOptions = ExhOptions {
     _scaleGen :: ScaleGen    

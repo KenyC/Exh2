@@ -11,6 +11,7 @@ import Exh.Formula.Atom
 import Exh.Formula.Internal
 import Exh.Formula.Neg
 import Exh.Formula.Op
+import Exh.Semantics
 
 allTests :: TestTree
 allTests = testGroup 

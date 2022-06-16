@@ -8,7 +8,6 @@ module Exh.Formula(
     , display
     , evaluate
     , evalMulti
-    , fullLogicalSpace
     , AtomName(..)
     , Assignment(..)
     , ScaleGen(..)

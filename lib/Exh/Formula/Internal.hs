@@ -15,7 +15,6 @@ module Exh.Formula.Internal(
     , display
     , evaluate
     , evalMulti
-    , fullLogicalSpace
     , AtomName(..)
     , Assignment(..)
     , ScaleGen(..)
@@ -105,18 +104,6 @@ evalMulti container formula = for container $ \g -> evaluate g formula
 
 newtype AtomName = AtomName String deriving (Show, Eq, Ord, Read, IsString)
 type Assignment t = Map AtomName t
-
--- | No commitment to any behavior if same name appears twice in the list
-fullLogicalSpace :: [AtomName] -> [Assignment Bool]
-fullLogicalSpace names = 
-    [Map.fromList $ zip names bools | bools <- truthTable] where
-    -- using list monad, we generate all combinations of (True, False)
-    truthTable = mapM (const $ [False, True]) names 
-
-
-
-
-
 
 
 ------------------- SCALE -----------------
