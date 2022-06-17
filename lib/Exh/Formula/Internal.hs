@@ -1,4 +1,11 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-|
+This module defines the 'Formula' type and various utilities around it. 
+
+The construction is as follows: a formula is a list of children formula (potentially empty) and some user data. In concrete terms, 'Formula' wraps @Formula_ t@ where @t@ is the type of the user data, and @Formula_ t@ is a record containing 'children' and 'userData'. 
+
+@t@ must implement 'IsFormula'. Any type that implements 'IsFormula' must *a minima* specify how to evaluate @Formula_ t@ against an assignment (cf 'evaluate_'), how to compute alternatives to @Formula_ t@ (cf 'alts_'), and how to display it, given display values for the children.
+-}
 module Exh.Formula.Internal(
       EvalError(..)
     , IsFormula(..)
@@ -38,7 +45,7 @@ import Data.Typeable
 ------------------- TYPES -----------------
 
 data EvalError 
-    = NoValueFor AtomName
+    = NoValueFor AtomName -- ^ the formula contains atom x but the map 'Assignment' does not a have a value for x.
     deriving (Show, Eq)
 
 
@@ -104,14 +111,17 @@ display (MkF f) = snd $ displayAux f
 
 ------------------- EVALUATE -----------------
 
+-- | Evaluate a formula against an assignment. May return `Left err` if assignment does not give values for all propositions in a formula.
 evaluate :: Assignment Bool -> Formula -> Either EvalError Bool
 evaluate g (MkF f) = evaluate_ g f
 
+-- | Evaluate a formula against a set/list/etc of assignments. Returns an error if any evaluation fails.
 evalMulti :: (Traversable f) => f (Assignment Bool) -> Formula -> Either EvalError (f Bool)
 evalMulti container formula = for container $ \g -> evaluate g formula
 
 ------------------- ASSIGNMENTS -----------------
 
+-- | Name for propositional atoms. Thin wrapper around a 'String'. If -XOverloadedStrings is on, can be specified as: `name :: AtomName = "foo"`.
 newtype AtomName = AtomName String deriving (Show, Eq, Ord, Read, IsString)
 type Assignment t = Map AtomName t
 
@@ -119,8 +129,8 @@ type Assignment t = Map AtomName t
 ------------------- SCALE -----------------
 
 data ScaleGen = ScaleGen {
-    _opScales :: [Scale]
-  , _subst :: Bool
+    _opScales :: [Scale] -- ^ scales to be used for item replacement
+  , _subst :: Bool       -- ^ are children nodes alternatives to parent nodes?
 } deriving (Eq)
 
 -- instance Default ScaleGen where

@@ -1,3 +1,8 @@
+{-|
+This module defines atoms: the smallest units from which all formulas are built. An atom is defined by a name (type 'AtomName'). The name is used for display.
+
+If -XOverloadedStrings is on, @atom "someName"@ creates a formula representing an atom with name "someName".
+-}
 module Exh.Formula.Atom(
     Atom(..)
   , atom
@@ -28,7 +33,7 @@ instance IsFormula Atom where
     getAtoms_ f = Set.singleton $ name
                   where Atom name = userData f
 
--- | syntactic sugar
+-- | Make a proposition atom from a name.
 atom :: AtomName -> Formula
 atom = MkF . (Formula_ []) . Atom 
 

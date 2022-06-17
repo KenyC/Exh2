@@ -1,3 +1,8 @@
+{-|
+This module defines a general interface to create binary operators, as well as useful particular instances like 'Or' and 'And'.
+
+
+-}
 module Exh.Formula.Op(
       Op(..)
     , BinaryConnective(..)
@@ -22,9 +27,9 @@ import Exh.Formula.Utils
 ------------------- BINARY CONNECTIVES -----------------
 
 data BinaryConnective = BinaryConnective {
-      symbol   :: String
-    , priority :: Int
-    , fun      :: Bool -> Bool -> Bool
+      symbol   :: String               -- ^ displayed between operands
+    , priority :: Int                  -- ^ operators get parenthesized if themselves operand of a lower priority operator (e.g. AND p (OR q r) = p & (q | r))
+    , fun      :: Bool -> Bool -> Bool -- ^ how to combine operands to get the truth-value of the whole
 }
 
 data Or = Or
@@ -43,7 +48,7 @@ instance IsConnective And where
         , fun      = (&&)
     }
 
--- | Associated type constant 
+-- | Associated type constant.
 class (Typeable op) => IsConnective op where
     conn :: Proxy op -> BinaryConnective
 
@@ -102,13 +107,14 @@ instance (IsConnective op) => IsFormula (Op op) where
 instance (Typeable op1, Typeable op2) => MapUserData (Op op1) (Op op2) where
     mapUserData Op = Op
 
+-- | Form a scale from two operator types.
 (<|>) :: forall op1 op2. (IsConnective op1, IsConnective op2) => op1 -> op2 -> Scale
 (<|>) _ _ = Scale (Proxy @(Op op1)) (Proxy @(Op op2))
 
 
 infixr 3 &.
 infixr 2 |.
--- | syntactic sugar
+-- | Or and And operators
 (&.), (|.) :: Formula -> Formula -> Formula
 (&.) f g = MkF $ Formula_ [f, g] (Op @And) 
 (|.) f g = MkF $ Formula_ [f, g] (Op @Or)  

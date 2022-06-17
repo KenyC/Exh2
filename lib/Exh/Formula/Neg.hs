@@ -22,5 +22,6 @@ instance IsFormula Neg where
     alts_ sg (Formula_ [child] _) = neg <$> alts sg child
     alts_ _ _ = error "Negation can only have one child."
 
+-- | Negates a formula.
 neg :: Formula -> Formula
 neg f = MkF $ Formula_ [f] Neg 

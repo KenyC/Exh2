@@ -17,9 +17,10 @@ import Exh.Formula.Atom
 import Exh.Formula.Op
 import Exh.Semantics
 
+-- | Options for exhaustification.
 data ExhOptions = ExhOptions {
-    _scaleGen       :: ScaleGen    
-  , _stipulatedAlts :: Maybe [Formula]
+    _scaleGen       :: ScaleGen        -- ^ How to compute alternatives automatically
+  , _stipulatedAlts :: Maybe [Formula] -- ^ If `Just alts`, don't compute alternatives automatically but use `alts` instead
 } deriving (Eq)
 
 instance Default ScaleGen where
@@ -35,9 +36,9 @@ instance Default ExhOptions where
     }
 
 data Exh = Exh {
-    allAlts   :: ![Formula] 
-  , ieAlts    :: ![Formula]
-  , opts      :: !ExhOptions
+    allAlts   :: ![Formula]   -- ^ all alternatives
+  , ieAlts    :: ![Formula]   -- ^ innocently excludable alternatives
+  , opts      :: !ExhOptions  -- ^ options used in the computation
 } deriving (Eq)
 
 instance IsFormula Exh where
@@ -63,8 +64,11 @@ instance IsFormula Exh where
                         prejacent:_ = children f
 
 
+-- | Exhaustify prejacent with default options. Cf 'exhWith'.
+exh :: Formula -> Formula 
 exh = exhWith def
 
+-- | Exhaustify prejacent with custom options. Cf 'exh'.
 exhWith :: ExhOptions -> Formula -> Formula 
 exhWith opts@ExhOptions{..} prejacent = let
     allAlts = case _stipulatedAlts of
@@ -91,7 +95,7 @@ instance Semigroup PartialOrd where
 instance Monoid PartialOrd where
     mempty = Equal
 
--- | From a prejacent and a set of alternatives, returns the IE alternatives
+-- | From a prejacent and a set of alternatives, returns the IE alternatives.
 ieExhaustify :: Formula -> [Formula] -> [Formula]
 ieExhaustify prejacent alts = let
     atoms = Set.unions $ map getAtoms $ prejacent:alts
