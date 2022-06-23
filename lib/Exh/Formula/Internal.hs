@@ -20,11 +20,18 @@ module Exh.Formula.Internal(
     -- high-level stuff
     , alts
     , getAtoms
+    , freeVars
     , display
     , evaluate
     , evalMulti
     , AtomName(..)
+    , VarName(..)
+    , Atom(..)
     , Assignment(..)
+    , (~>)
+    , (=@)
+    , mkG
+    , modG
     , ScaleGen(..)
     , MapUserData(..)
     , replaceFormula
@@ -33,6 +40,8 @@ module Exh.Formula.Internal(
 ) where
 
 import Control.Monad.Writer.Strict
+import Control.Monad.State.Strict
+import Data.Default
 import Data.String
 import Data.Proxy
 import Data.Traversable (for)
@@ -45,7 +54,8 @@ import Data.Typeable
 ------------------- TYPES -----------------
 
 data EvalError 
-    = NoValueFor AtomName -- ^ the formula contains atom x but the map 'Assignment' does not a have a value for x.
+    = NoValueFor AtomName      -- ^ the formula contains atom p but the assignment does not a have a value for p.
+    | UnvaluedVar VarName      -- ^ trying to get a value for variable x but the assignment does not contain a value for x.
     deriving (Show, Eq)
 
 
@@ -53,13 +63,16 @@ data EvalError
 
 class (Typeable f, Eq f) => IsFormula f where
     display_  :: f -> [(Int, String)] -> (Int, String)
-    evaluate_ :: Assignment Bool -> Formula_ f -> Either EvalError Bool
+    evaluate_ :: Assignment -> Formula_ f -> Either EvalError Bool
     alts_     :: ScaleGen -> Formula_ f -> [Formula]
 
     {-# MINIMAL display_, evaluate_, alts_ #-}
 
-    getAtoms_ :: Formula_ f -> Set AtomName
+    getAtoms_ :: Formula_ f -> Set Atom
     getAtoms_ Formula_{..} = Set.unions [getAtoms_ f | MkF f <- children] 
+
+    freeVars_ :: Formula_ f -> Set VarName
+    freeVars_ Formula_{..} = Set.unions [freeVars_ f | MkF f <- children] 
 
 data Formula_ a = Formula_ {
     children :: [Formula]
@@ -78,11 +91,6 @@ getData =  matching >=> (Just . userData)
 
 instance Eq Formula where
     (==) (MkF f) (MkF g) = (cast f) == (Just g)
--- data Test (k :: * -> Constraint) where
---     MkT :: (IsFormula f, k f) => f -> Test k
-
--- type DblConst a = (Show a, Read a)
--- type Test1 = Test DblConst
 
 instance Show Formula where
     show f = display f
@@ -98,8 +106,11 @@ foldFormula combine (MkF (Formula_ {..})) = combine userData $ map (foldFormula 
 alts :: ScaleGen -> Formula -> [Formula]
 alts sg (MkF f) = alts_ sg f
 
-getAtoms :: Formula -> Set AtomName
+getAtoms :: Formula -> Set Atom
 getAtoms (MkF f) = getAtoms_ f
+
+freeVars :: Formula -> Set VarName
+freeVars (MkF f) = freeVars_ f
 
 ------------------- DISPLAY -----------------
 
@@ -112,18 +123,66 @@ display (MkF f) = snd $ displayAux f
 ------------------- EVALUATE -----------------
 
 -- | Evaluate a formula against an assignment. May return `Left err` if assignment does not give values for all propositions in a formula.
-evaluate :: Assignment Bool -> Formula -> Either EvalError Bool
+evaluate :: Assignment -> Formula -> Either EvalError Bool
 evaluate g (MkF f) = evaluate_ g f
 
 -- | Evaluate a formula against a set/list/etc of assignments. Returns an error if any evaluation fails.
-evalMulti :: (Traversable f) => f (Assignment Bool) -> Formula -> Either EvalError (f Bool)
+evalMulti :: (Traversable f) => f Assignment -> Formula -> Either EvalError (f Bool)
 evalMulti container formula = for container $ \g -> evaluate g formula
 
 ------------------- ASSIGNMENTS -----------------
 
 -- | Name for propositional atoms. Thin wrapper around a 'String'. If -XOverloadedStrings is on, can be specified as: `name :: AtomName = "foo"`.
-newtype AtomName = AtomName String deriving (Show, Eq, Ord, Read, IsString)
-type Assignment t = Map AtomName t
+newtype AtomName = AtomName {getAtomName :: String} deriving (Show, Eq, Ord, Read, IsString)
+data Atom = Atom {
+    arity :: !Int 
+  , name  :: !AtomName 
+} deriving (Ord, Eq, Show)
+newtype VarName  = VarName String deriving (Show, Eq, Ord, Read, IsString)
+data Assignment = Assignment {
+    varVals  :: Map VarName Int
+  , atomVals :: Map Atom (Map [Int] Bool)
+} deriving (Eq, Show)
+
+instance Default Assignment where
+    def = Assignment Map.empty Map.empty
+
+newtype AssignmentBuilder a = AssignmentBuilder {
+    unwrapAssignMonoid :: State Assignment a
+} deriving (Functor, Applicative, Monad, MonadState Assignment)
+
+mkG :: AssignmentBuilder () -> Assignment
+mkG = modG def
+
+modG :: Assignment -> AssignmentBuilder () -> Assignment
+modG inputAssignment builder = execState (unwrapAssignMonoid builder) inputAssignment
+
+(=@) :: VarName -> Int -> AssignmentBuilder ()
+(=@) name val = do
+    modify $ \assignment ->
+        assignment {varVals = Map.insert name val $ varVals assignment} 
+
+class AssignableToAtom t where
+    (~>) :: AtomName -> t -> AssignmentBuilder ()
+
+instance AssignableToAtom Bool where
+    (~>) name val = do
+        modify $ \assignment ->
+            assignment {atomVals = Map.insert newAtom newVal $ atomVals assignment} where
+            newAtom = Atom 0 name
+            newVal  = Map.fromList [([], val)] 
+
+instance AssignableToAtom [Bool] where
+    (~>) name val = do
+        modify $ \assignment ->
+            assignment {atomVals = Map.insert newAtom newVal $ atomVals assignment} where
+            newAtom = Atom {arity = 1 , name = name}
+            newVal  = Map.fromList [([i], bool) | (i, bool) <- zip [0..] val] 
+
+
+instance AssignableToAtom [([Int], Bool)] where
+    (~>) name val = _todoAssignable3
+
 
 
 ------------------- SCALE -----------------

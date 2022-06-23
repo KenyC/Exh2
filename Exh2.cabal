@@ -22,6 +22,7 @@ library
                      Exh.Formula.Internal
                      Exh.Formula.Neg
                      Exh.Formula.Op
+                     Exh.Formula.Quantifier
                      Exh.Formula.Utils
                      Exh.Exh
                      Exh.Semantics

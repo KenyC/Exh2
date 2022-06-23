@@ -5,9 +5,16 @@ If -XOverloadedStrings is on, @atom "someName"@ creates a formula representing a
 -}
 module Exh.Formula.Atom(
     Atom(..)
+  , Predicate(..)
   , atom
+  , sizeDomain
+  , prop
+  , prd
 ) where
 
+
+import Control.Monad
+import Data.List (intersperse)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -17,23 +24,42 @@ import Exh.Formula.Internal
 
 ------------------- ATOM -----------------
 
-data Atom = Atom AtomName deriving (Eq, Show)
+
+data Predicate = Predicate {
+    atom        :: Atom
+  , varsInSlots :: [VarName]
+} deriving (Eq, Show)
+
+instance IsFormula Predicate where
+    display_ (Predicate Atom{..} vars) _ = (0, displayString) where
+        AtomName nameStr = name
+        displayString
+            | arity == 0 = nameStr 
+            | otherwise  = nameStr ++ "(" ++ (mconcat $ intersperse "," [varStr | VarName varStr <- vars])  ++ ")"
 
 
-instance IsFormula Atom where
-    display_ (Atom (AtomName nameStr)) _ = (0, nameStr)
-    evaluate_ g (Formula_ {..}) =
-        let Atom name = userData in 
-        maybe 
-            (Left $ NoValueFor name) 
-            Right $
-            Map.lookup name g 
+    evaluate_ Assignment{..} f = do
+        let maybeToEither err (Just x) = Right x
+            maybeToEither err Nothing  = Left err
+        let Predicate {..} = userData f
+        valueVars <- forM varsInSlots $ \var ->
+                        maybeToEither (UnvaluedVar var) $ Map.lookup var varVals
+        atomAssignment <- maybeToEither (NoValueFor $ name atom) $ Map.lookup atom atomVals 
+        maybeToEither _somethingElse $ Map.lookup valueVars atomAssignment
+
+
     alts_ _ f = [MkF f]
 
-    getAtoms_ f = Set.singleton $ name
-                  where Atom name = userData f
+    getAtoms_ f = Set.singleton $ atom $ userData f
+    freeVars_ f = Set.fromList  $ varsInSlots $ userData f
 
 -- | Make a proposition atom from a name.
-atom :: AtomName -> Formula
-atom = MkF . (Formula_ []) . Atom 
+prop :: AtomName -> Formula
+prop = MkF . (Formula_ []) . (\name -> Predicate (Atom 0 name) []) 
+
+prd :: AtomName -> [VarName] -> Formula
+prd name vars = MkF $ Formula_ [] $ Predicate (Atom (length vars) name) vars 
+
+sizeDomain :: Int
+sizeDomain = 3
 

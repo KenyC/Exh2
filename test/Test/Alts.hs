@@ -9,6 +9,7 @@ import Utils
 
 import Exh.Formula.Internal
 import Exh.Formula.Atom
+import Exh.Formula.Quantifier
 import Exh.Formula.Op
 import Exh.Exh
 
@@ -16,17 +17,24 @@ allTests :: TestTree
 allTests = testGroup 
                 "alts"
                 [ simpleAtom  
-                , simpleConnective  ]
+                , simpleConnective  
+                , quantifiers      ]
 
 
 simpleAtom :: TestTree
 simpleAtom = testCase "atom" $ do
-    let formula = Formula_ [] $ Atom "xyz" 
-    alts_ def formula @?= [MkF formula]
+    let formula = prop "xyz" 
+    alts def formula @?= [formula]
+
+    let formula = prd "xyz" ["x"] 
+    alts def formula @?= [formula]
+
+    let formula = prd "xyz" ["x", "z"] 
+    alts def formula @?= [formula]
 
 simpleConnective :: TestTree
 simpleConnective = testCase "simple connective" $ do
-    let p:q:[] = map atom ["p", "q"]
+    let p:q:[] = map prop ["p", "q"]
     let formula = p |. q 
 
     let opts = def { _subst = False }
@@ -43,6 +51,32 @@ simpleConnective = testCase "simple connective" $ do
     sameElems
         [p &. q, p, q]
         (alts def formula)  
+
+    -- let formula = p &. q 
+    -- alts_ def formula @?= [p &. q, p, q]
+
+
+quantifiers :: TestTree
+quantifiers = testCase "quantifiers" $ do
+    let p:q:[] = map prd ["p", "q"]
+    let formula = _E "x" $ p ["x"] 
+
+    let opts = def 
+
+    sameElems
+        (alts opts formula)  
+        [_E "x" $ p ["x"], _A "x" $ p ["x"]]
+
+
+    let formula = _E "x" $ p ["x"] |. q ["x"] 
+
+    sameElems
+        (alts opts formula)  
+        [ _E "x" $ p ["x"], _E "x" $ q ["x"]
+        , _E "x" $ p["x"] |. q ["x"], _E "x" $ p["x"] &. q ["x"] 
+        , _A "x" $ p ["x"], _A "x" $ q ["x"]
+        , _A "x" $ p["x"] |. q ["x"], _A "x" $ p["x"] &. q ["x"] ]
+
 
     -- let formula = p &. q 
     -- alts_ def formula @?= [p &. q, p, q]

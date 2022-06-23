@@ -21,11 +21,16 @@ module Exh.Formula(
     -- Exh.Formula.Op
     , (<|>)
     , Or(..), And(..)
-    , (&.), (|.),
+    , (&.), (|.)
+
+    -- Exh.Formula.Atom
+    , prop
+    , prd
 
 ) where
 
 import Exh.Formula.Internal
 import Exh.Formula.Neg
 import Exh.Formula.Op
+import Exh.Formula.Atom
 

@@ -10,9 +10,11 @@ import Data.Default
 import Data.List (foldl')
 import Data.Traversable
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Debug.Trace
 
 import Exh.Formula.Internal
+import Exh.Formula.Quantifier
 import Exh.Formula.Atom
 import Exh.Formula.Op
 import Exh.Semantics
@@ -25,7 +27,7 @@ data ExhOptions = ExhOptions {
 
 instance Default ScaleGen where
     def = ScaleGen {
-        _opScales = [Or <|> And]
+        _opScales = [Or <|> And, Exists <::> ForAll]
       , _subst    = True
     }
 
@@ -99,11 +101,16 @@ instance Monoid PartialOrd where
 ieExhaustify :: Formula -> [Formula] -> [Formula]
 ieExhaustify prejacent alts = let
     atoms = Set.unions $ map getAtoms $ prejacent:alts
-    universe = fullLogicalSpace $ Set.toList atoms
+    -- all free vars get a default 0 value (if exh is performed logically, it shouldn't make a diff)
+    freeVarsToValue = Map.fromList 
+                          [ (v, 0)
+                          | f <- prejacent:alts
+                          , v <- Set.toList (freeVars f)]
+    universe = [assignment {varVals = freeVarsToValue} | assignment <- fullLogicalSpace $ Set.toList atoms]
     -- can't fail the way b/c we tailor-made the universe for this formula ; 
     -- but the compiler does not know that
     Right valuesF = evalMulti universe prejacent
-    restrictedUniverse = [ assignment | (assignment, True) <- zip universe valuesF]
+    restrictedUniverse = [ assignment  | (assignment, True) <- zip universe valuesF]
 
     -- here there is potential for failure, as alternatives may be customs-specified
     -- maybe make the universe after alternatives have been computed?

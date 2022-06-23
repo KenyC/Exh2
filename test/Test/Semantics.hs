@@ -7,6 +7,7 @@ import Test.Tasty.HUnit
 import Utils
 
 import Exh.Formula.Atom
+import Exh.Formula.Quantifier
 import Exh.Formula.Internal
 import Exh.Formula.Neg
 import Exh.Formula.Op
@@ -17,12 +18,13 @@ allTests :: TestTree
 allTests = testGroup 
                 "semantics"
                 [ deMorgan 
-                , strongerConnectives ]
+                , strongerConnectives 
+                , strongerQuantifiers ]
 
 
-p = atom "p"
-q = atom "q"
-r = atom "r"
+p = prop "p"
+q = prop "q"
+r = prop "r"
 
 deMorgan :: TestTree
 deMorgan = testCase "De Morgan" $ do
@@ -50,9 +52,32 @@ strongerConnectives = testCase "strongerConnectives" $ do
     entails f g @?= Right True
     entails g f @?= Right True
 
+    let f = p |. q
+        g = p &. q
+
+    entails f g @?= Right False
+    entails g f @?= Right True
+
     let f = p |. neg q
         g = neg p |. q
         
     compatible f g             @?= Right True
     compatible (neg f) (neg g) @?= Right False
         
+
+strongerQuantifiers :: TestTree
+strongerQuantifiers = testCase "stronger quantifiers" $ do
+    let p = prd "p"
+        q = prd "q"
+
+    entails (_A "x" $ p ["x"]) (_E "x" $ p ["x"]) @?= Right True
+    entails (_E "x" $ p ["x"]) (_A "x" $ p ["x"]) @?= Right False
+
+    let p = prd "p"
+        q = prd "q"
+
+    let f = _A "x" $ p ["x"] |. q ["x"]
+        g = (_E "x" $ p ["x"]) |. (_E "x" $ q ["x"]) 
+
+    entails f g @?= Right True
+    entails g f @?= Right False
