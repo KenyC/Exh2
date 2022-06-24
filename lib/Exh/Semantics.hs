@@ -32,8 +32,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List (intersperse)
 
-import Exh.Formula.Internal
-import Exh.Formula.Atom
+import Exh.Internal
+import Exh.Atom
 import Exh.Display
 
 -- | Returns all possible assignments of truth values to the given set of names.

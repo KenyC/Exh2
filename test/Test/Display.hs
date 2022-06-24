@@ -5,9 +5,9 @@ module Test.Display where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Exh.Formula
-import Exh.Formula.Atom
-import Exh.Formula.Quantifier
+import Exh
+import Exh.Atom
+import Exh.Quantifier
 import Exh.Semantics
 
 allTests :: TestTree

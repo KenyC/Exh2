@@ -11,12 +11,11 @@ import Data.List (foldl')
 import Data.Traversable
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Debug.Trace
+-- import Debug.Trace
 
-import Exh.Formula.Internal
-import Exh.Formula.Quantifier
-import Exh.Formula.Atom
-import Exh.Formula.Op
+import Exh.Internal
+import Exh.Quantifier
+import Exh.Proposition
 import Exh.Semantics
 
 -- | Options for exhaustification.

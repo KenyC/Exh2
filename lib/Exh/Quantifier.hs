@@ -89,7 +89,7 @@ exhWith opts $ _E "x" $ prd "p" ["x"]
 @
 
 -}
-module Exh.Formula.Quantifier(
+module Exh.Quantifier(
     ForAll(..),
     Exists(..),
     QuantifierDesc(..),
@@ -98,10 +98,9 @@ module Exh.Formula.Quantifier(
     (<::>),
 ) where
 
-import Exh.Formula.Internal
-import Exh.Formula.Atom
+import Exh.Internal
+import Exh.Atom
 import Data.Typeable
-import Data.Proxy
 import Data.Maybe (catMaybes)
 import Data.List  (nub)
 

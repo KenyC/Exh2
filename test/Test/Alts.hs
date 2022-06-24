@@ -7,10 +7,10 @@ import Test.Tasty.HUnit
 
 import Utils
 
-import Exh.Formula.Internal
-import Exh.Formula.Atom
-import Exh.Formula.Quantifier
-import Exh.Formula.Op
+import Exh.Internal
+import Exh.Atom
+import Exh.Quantifier
+import Exh.Proposition
 import Exh.Exh
 
 allTests :: TestTree

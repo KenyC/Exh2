@@ -46,7 +46,7 @@ alwaysFalse = MkF $ Formula_ {children = [], userData = Contradiction}
 
 -}
 
-module Exh.Formula.Internal(
+module Exh.Internal(
       EvalError(..)
     , IsFormula(..)
     , Formula(..)

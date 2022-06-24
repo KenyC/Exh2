@@ -3,10 +3,9 @@ This module defines atoms: the smallest units from which all formulas are built.
 
 If -XOverloadedStrings is on, @atom "someName"@ creates a formula representing an atom with name "someName".
 -}
-module Exh.Formula.Atom(
+module Exh.Atom(
     Atom(..)
   , Predicate(..)
-  , atom
   , sizeDomain
   , prop
   , prd
@@ -15,12 +14,10 @@ module Exh.Formula.Atom(
 
 import Control.Monad
 import Data.List (intersperse)
-import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Data.Typeable
 
-import Exh.Formula.Internal
+import Exh.Internal
 
 ------------------- ATOM -----------------
 
@@ -39,7 +36,7 @@ instance IsFormula Predicate where
 
 
     evaluate_ Assignment{..} f = do
-        let maybeToEither err (Just x) = Right x
+        let maybeToEither _  (Just x)  = Right x
             maybeToEither err Nothing  = Left err
         let Predicate {..} = userData f
         valueVars <- forM varsInSlots $ \var ->

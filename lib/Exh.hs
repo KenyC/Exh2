@@ -1,6 +1,4 @@
-module Exh.Formula(
-
-
+module Exh (
     -- Exh.Formula.Internal
       EvalError(..)
     , Formula(..)
@@ -29,8 +27,7 @@ module Exh.Formula(
 
 ) where
 
-import Exh.Formula.Internal
-import Exh.Formula.Neg
-import Exh.Formula.Op
-import Exh.Formula.Atom
+import Exh.Internal
+import Exh.Proposition
+import Exh.Atom
 

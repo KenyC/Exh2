@@ -6,11 +6,10 @@ import Test.Tasty.HUnit
 
 import Utils
 
-import Exh.Formula.Atom
-import Exh.Formula.Quantifier
-import Exh.Formula.Internal
-import Exh.Formula.Neg
-import Exh.Formula.Op
+import Exh.Atom
+import Exh.Quantifier
+import Exh.Internal
+import Exh.Proposition
 import Exh.Exh
 import Exh.Semantics
 

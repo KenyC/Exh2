@@ -55,7 +55,7 @@ With this, "p xor q" may be written as:
 p <+> q
 @
 -}
-module Exh.Formula.Op(
+module Exh.Proposition(
       Op(..)
     , ConnectiveDesc(..)
     , Or(..)
@@ -65,6 +65,8 @@ module Exh.Formula.Op(
     , (|.)
     , (=>.)
     , (<=>.)
+    , neg
+    , Neg
 ) where
 
 import Control.Monad.Writer.Strict
@@ -73,8 +75,8 @@ import Data.List  (nub)
 import Data.Proxy
 import Data.Typeable
 
-import Exh.Formula.Internal
-import Exh.Formula.Utils
+import Exh.Internal
+import Exh.Display
 
 
 
@@ -195,3 +197,26 @@ instance IsConnective Equiv where
 (=>.), (<=>.) :: Formula -> Formula -> Formula
 (=>.)  f g = MkF $ Formula_ [f, g] (Op @Implication) 
 (<=>.) f g = MkF $ Formula_ [f, g] (Op @Equiv)  
+
+
+------------------- NEGATION -----------------
+
+data Neg = Neg deriving (Eq)
+
+priorityNeg :: Int
+priorityNeg = 1
+
+instance IsFormula Neg where
+
+    display_ _ ((priority, f):[]) = (priorityNeg,  '¬':parenthesizeIf (priority > priorityNeg) f)
+    display_ _ _ = error "Negation can only have one child."
+
+    evaluate_ g (Formula_ [f] _) = not <$> evaluate g f
+    evaluate_ _ _ = error "Negation can only have one child."
+
+    alts_ sg (Formula_ [child] _) = neg <$> alts sg child
+    alts_ _ _ = error "Negation can only have one child."
+
+-- | Negates a formula.
+neg :: Formula -> Formula
+neg f = MkF $ Formula_ [f] Neg 

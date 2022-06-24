@@ -1,6 +1,9 @@
-module Exh.Display where
+module Exh.Display(
+    centerIn
+  , parenthesize
+  , parenthesizeIf
+) where
 
-import Data.Word
 
 centerIn :: Int -> String -> String
 centerIn n s = let
@@ -9,3 +12,14 @@ centerIn n s = let
     rightSide    = missingSpace - leftSide
 
     in replicate leftSide ' ' ++ s ++ (replicate rightSide ' ')
+
+
+parenthesize :: String -> String
+parenthesize body = mconcat $ 
+    [ "("
+    , body
+    , ")" ]
+
+parenthesizeIf :: Bool -> String -> String
+parenthesizeIf True  = parenthesize
+parenthesizeIf False = id
