@@ -1,11 +1,51 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-|
-This module defines the 'Formula' type and various utilities around it. 
+This module exposes the internal constructs of the 'Formula' type, various utilities around it. Unless you want to define custom formula types, you shouldn't need anything in there ; use 'Exh.Formula' rather.
 
-The construction is as follows: a formula is a list of children formula (potentially empty) and some user data. In concrete terms, 'Formula' wraps @Formula_ t@ where @t@ is the type of the user data, and @Formula_ t@ is a record containing 'children' and 'userData'. 
+= What is 'Formula' ?
 
-@t@ must implement 'IsFormula'. Any type that implements 'IsFormula' must *a minima* specify how to evaluate @Formula_ t@ against an assignment (cf 'evaluate_'), how to compute alternatives to @Formula_ t@ (cf 'alts_'), and how to display it, given display values for the children.
+The construction is as follows: a formula is a list of children formula (potentially empty) and some user data. For instance, in "p ∨ q", the children would correspond to "p" and "q", user data would be something specifying that this is a disjunction. 
+
+In concrete terms, 'Formula' contains @Formula_ t@ where @t@ is the type of the user data, and @Formula_ t@ is a record containing 'children' and 'userData'. 
+
+@t@ must be an instance of 'IsFormula'. Any type that implements 'IsFormula' *a minima* specifies how to evaluate @Formula_ t@ against an assignment (cf 'evaluate_'), how to compute alternatives to @Formula_ t@ (cf 'alts_'), and how to display it (cf 'display_').
+
+= Custom formulas
+
+New custom formulas can be defined by simply providing a data type @t@ which is an instance of 'IsFormula'. For instance, let's define '⊤' and '⊥', a formula which is resp. always true and false. We start by defining a type:
+
+@
+data Constant = Tautology | Contradiction
+@
+
+We make it an instance of 'IsFormula' ; that means explaining how formulas ought to be displayed, evaluated and how its alternatives ought to be computed:
+
+@
+instance IsFormula Constant where
+    display_ Tautology     [] = (5, "⊤")
+    display_ Contradiction [] = (5, "⊥")
+    display_ _ (x:l) = error "Tautology and contradiction should not have children"
+
+    evaluate_ _assignment Formula_{..} = Right $ case userData of
+        Tautology     -> True
+        Contradiction -> False
+
+    -- no alternatives but oneself
+    alts_ _scaleGen self = [MkF self]
+@
+
+Now, we can create a 'Formula_ Constant' with no children and wrap it with 'MkF' to make a formula
+
+@
+alwaysTrue :: Formula
+alwaysTrue = MkF $ Formula_ {children = [], userData = Tautology}
+
+alwaysFalse :: Formula
+alwaysFalse = MkF $ Formula_ {children = [], userData = Contradiction}
+@
+
 -}
+
 module Exh.Formula.Internal(
       EvalError(..)
     , IsFormula(..)
@@ -74,18 +114,21 @@ class (Typeable f, Eq f) => IsFormula f where
     freeVars_ :: Formula_ f -> Set VarName
     freeVars_ Formula_{..} = Set.unions [freeVars_ f | MkF f <- children] 
 
+-- | A formula is some children and some user data. Values of this (polymorphic) type are then wrapped into the (monomorphic) 'Formula' values using the 'MkF' constructor.
 data Formula_ a = Formula_ {
     children :: [Formula]
   , userData :: a
 } deriving (Eq)
 
 data Formula where
+    -- | Wrapper
     MkF :: (IsFormula f) => Formula_ f -> Formula
 
 
 matching :: (IsFormula f) => Formula -> Maybe (Formula_ f)
 matching (MkF f) = cast f 
 
+-- | Retrieves the user data from a formula (provided the formula is of the right type)
 getData :: (IsFormula f) => Formula -> Maybe f
 getData =  matching >=> (Just . userData)
 
@@ -103,12 +146,15 @@ foldFormula combine (MkF (Formula_ {..})) = combine userData $ map (foldFormula 
 --     evaluate_ g   (MkF f) = evaluate_ g f
 --     alts_     sg  (MkF f) = alts_ sg f
 
+-- | Returns every alternative to the current formula, given the parameters for generating alternatives found in the 'ScaleGen' argument. 
 alts :: ScaleGen -> Formula -> [Formula]
 alts sg (MkF f) = alts_ sg f
 
+-- | Returns every atom in a formula. Can be overloaded for custom formulas (cf 'getAtoms_')
 getAtoms :: Formula -> Set Atom
 getAtoms (MkF f) = getAtoms_ f
 
+-- | Returns any unbound variable in the formula. Can be overloaded for custom formulas (cf 'freeVars_')
 freeVars :: Formula -> Set VarName
 freeVars (MkF f) = freeVars_ f
 
@@ -132,13 +178,17 @@ evalMulti container formula = for container $ \g -> evaluate g formula
 
 ------------------- ASSIGNMENTS -----------------
 
--- | Name for propositional atoms. Thin wrapper around a 'String'. If -XOverloadedStrings is on, can be specified as: `name :: AtomName = "foo"`.
+-- | Name for propositional and predicate atoms. Thin wrapper around a 'String'. If -XOverloadedStrings is on, can be specified as: @name :: AtomName = "foo"@.
 newtype AtomName = AtomName {getAtomName :: String} deriving (Show, Eq, Ord, Read, IsString)
 data Atom = Atom {
     arity :: !Int 
   , name  :: !AtomName 
 } deriving (Ord, Eq, Show)
+
+-- | Name for variables. Thin wrapper around a 'String'. If -XOverloadedStrings is on, can be specified as: @name :: VarName = "foo"@.
 newtype VarName  = VarName String deriving (Show, Eq, Ord, Read, IsString)
+
+-- | Data type containing everything to evaluate a formula to a truth value, i.e. truth values for unbound variables and truth values for saturated predicates
 data Assignment = Assignment {
     varVals  :: Map VarName Int
   , atomVals :: Map Atom (Map [Int] Bool)
@@ -147,6 +197,7 @@ data Assignment = Assignment {
 instance Default Assignment where
     def = Assignment Map.empty Map.empty
 
+-- | A monad for building 'Assignment' values. Turn monad to 'Assignment' value using 'mkG'.
 newtype AssignmentBuilder a = AssignmentBuilder {
     unwrapAssignMonoid :: State Assignment a
 } deriving (Functor, Applicative, Monad, MonadState Assignment)
@@ -206,7 +257,7 @@ replaceFormula (Formula_ children userData') =
     Formula_{..} where
     userData = mapUserData userData'
 
-
+-- | A Scale is nothing more than a way to turn 'Formula_ a' into 'Formula_ b'. This amounts to how to map 'userData' of 'Formula_ a' to 'userData' of 'Formula_ b'.
 data Scale where
     Scale :: 
            ( Typeable op1

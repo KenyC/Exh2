@@ -1,8 +1,8 @@
 {-|
 This module gives various utilities to inspect the truth-conditions of formulas, including:
 
-  - utility for creating truth tables
-  - utility for building all possible assignments
+  - utility for creating truth tables ('mkTruthTable')
+  - utility for building all possible assignments ('fullLogicalSpace')
   - 'equivalent' or '<=>' checks equivalence between two formulas
   - 'entails' checks if one formula entails another
   - 'compatible' checks if two formulas can both be satisfied in some assignment (aka consistent with one another)

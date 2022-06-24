@@ -22,7 +22,7 @@ import Exh.Semantics
 -- | Options for exhaustification.
 data ExhOptions = ExhOptions {
     _scaleGen       :: ScaleGen        -- ^ How to compute alternatives automatically
-  , _stipulatedAlts :: Maybe [Formula] -- ^ If `Just alts`, don't compute alternatives automatically but use `alts` instead
+  , _stipulatedAlts :: Maybe [Formula] -- ^ If @Just alts@, don't compute alternatives automatically but use @alts@ instead
 } deriving (Eq)
 
 instance Default ScaleGen where
